@@ -1,5 +1,5 @@
 # AnuraFIXED
-An _**unofficial**_ fixed version of the GitHub Codespaces setup script for [AnuraOS](https://github.com/mercuryworkshop/anuraos) by [MercuryWorkshop](https://github.com/mercuryworkshop) and an _**unofficial**_ fixed version of the static release ZIP file for [AnuraOS](https://github.com/mercuryworkshop/anuraos).
+An _**unofficial**_ fixed version of the GitHub Codespaces setup script for [AnuraOS](https://github.com/mercuryworkshop/anuraos) by [Mercury Workshop](https://github.com/mercuryworkshop) and an _**unofficial**_ fixed version of the static release ZIP file for [AnuraOS](https://github.com/mercuryworkshop/anuraos).
 
 To set up everything, make a GitHub Codespace for this repository and type ```source start.sh```. That will set up everything you need and you can just continue building AnuraOS normally with ```source codespace-basic-setup.sh``` and etc.
 
