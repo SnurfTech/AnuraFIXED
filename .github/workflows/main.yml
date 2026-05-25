@@ -1,4 +1,4 @@
-name: Build AnuraOS into docs
+name: Build new AnuraOS static release ZIP file
 
 on:
   workflow_dispatch:
@@ -92,6 +92,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create latest \
-            dist/anura.zip \
+            anura.zip \
             --title "Latest Build" \
             --notes "Automated latest release"
