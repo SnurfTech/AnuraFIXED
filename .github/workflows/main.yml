@@ -65,7 +65,9 @@ jobs:
           done
           cd -
 
-          zip -r anura.zip dist/*
+          cd dist
+          zip -r ../anura.zip .
+          cd -
 
       - name: Delete latest release + tag if they exist
         env:
