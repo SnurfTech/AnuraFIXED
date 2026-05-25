@@ -1,0 +1,97 @@
+name: Build AnuraOS into docs
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Download AnuraOS
+        run: |
+          curl -L \
+            "https://github.com/MercuryWorkshop/anuraOS/releases/download/latest/anura.zip" \
+            -o anura.zip
+
+      - name: Rebuild docs folder
+        run: |
+          mkdir -p dist
+          unzip -oq anura.zip -d dist
+          rm -f anura.zip
+
+          find dist -type f -name "*.cjs" -print0 | while IFS= read -r -d '' f; do mv "$f" "${f%.cjs}.js"; done
+          find dist -type f \( -name "*.js" -o -name "*.ts" -o -name "*.tsx" -o -name "*.html" \) -print0 | xargs -0 sed -i 's/\.cjs/\.js/g'
+          #find dist -type f -name "Settings.ts" -exec sed -i '/initial\["wisp-url"\] = "wss:\/\/relay\.widgetry\.org\/";/{n;/^[[:space:]]*}[[:space:]]*$/d;}' {} +
+          #find dist -type f -name "Settings.js" -exec sed -i '/initial\["wisp-url"\] = "wss:\/\/relay\.widgetry\.org\/";/{n;/^[[:space:]]*}[[:space:]]*$/d;}' {} +
+          find dist -type f -name "Settings.*s" -exec sed -i 's|!initial\["wisp-url"\]|true|g' {} +
+          find dist -type f -name "Settings.*s" -exec sed -i 's|initial\["wisp-url"\] = url;|initial["wisp-url"] = "wss://anura.pro";|g' {} +
+          find dist -type f \( -name "*.ts" -o -name "*.js" \) -exec sed -i '/{/! s|wisp_server|"wss://anura.pro"|g' {} +
+          # wss://relay.widgetry.org
+          sed -i 's|/lib/api/Filesystem.js|/lib/api/filesystem/Filesystem.js|g' dist/anura-sw.js
+          sed -i 's|/lib/api/LocalFS.js|/lib/api/filesystem/LocalFS.js|g' dist/anura-sw.js
+          find dist \( -path "*/Filesystem.ts" -o -path "*/Filesystem.js" \) -type f -exec sed -Ei '
+          s/rest\[rest\.length - 1\]!\(null\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1]!(null);\n}/g;
+          s/rest\[rest\.length - 1\]!\(err\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1]!(err);\n}/g;
+          s/rest\[rest\.length - 1\]!\(null, res\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1]!(null, res);\n}/g;
+          s/rest\[rest\.length - 1\]\(null\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1](null);\n}/g;
+          s/rest\[rest\.length - 1\]\(err\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1](err);\n}/g;
+          s/rest\[rest\.length - 1\]\(null, res\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1](null, res);\n}/g;
+          ' {} +
+
+          mkdir -p dist/x86images/alpine-boot
+
+          curl -Lo dist/x86images/alpine-boot/vmlinuz-virt \
+            https://anura.pro/x86images/alpine-boot/vmlinuz-virt
+
+          curl -Lo dist/x86images/alpine-boot/initramfs-virt \
+            https://anura.pro/x86images/alpine-boot/initramfs-virt
+
+          mkdir dist/x86images/alpine-rootfs
+          cd dist/x86images/alpine-rootfs
+          for file in $(cat ../../config.json | grep -oP "x86images/alpine-rootfs/[a-z]+" | cut -d '/' -f3); do
+            curl -LO "https://anura.pro/x86images/alpine-rootfs/$file"
+          done
+          cd -
+
+          zip -r anura.zip dist/*
+
+      - name: Delete latest release + tag if they exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+
+          LATEST_TAG=$(gh release view --json tagName -q .tagName 2>/dev/null)
+
+          if [ -n "$LATEST_TAG" ]; then
+            echo "Deleting release: $LATEST_TAG"
+
+            gh release delete "$LATEST_TAG" --yes
+
+            echo "Deleting tag: $LATEST_TAG"
+
+            git push origin ":refs/tags/$LATEST_TAG"
+          else
+            echo "No existing release found"
+          fi
+
+      - name: Create new latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create latest \
+            dist/anura.zip \
+            --title "Latest Build" \
+            --notes "Automated latest release"
