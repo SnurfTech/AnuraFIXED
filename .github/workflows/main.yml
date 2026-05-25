@@ -1,4 +1,4 @@
-name: Build new AnuraOS static release ZIP file
+name: Build and release new AnuraOS static release ZIP file
 
 on:
   workflow_dispatch:
@@ -25,7 +25,7 @@ jobs:
             "https://github.com/MercuryWorkshop/anuraOS/releases/download/latest/anura.zip" \
             -o anura.zip
 
-      - name: Rebuild docs folder
+      - name: Rebuild AnuraOS
         run: |
           mkdir -p dist
           unzip -oq anura.zip -d dist
