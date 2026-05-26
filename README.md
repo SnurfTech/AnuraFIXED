@@ -7,4 +7,4 @@ I also added some of my own features to the set up script. You can run ```export
 
 I also made it so that the AnuraOS server is automatically set to public port visibility because it is the only way internet access can work in AnuraOS after you've installed it with offline support and Extreme mode enabled. However, the public port visibility setting is only enabled automatically when you have Extreme mode and Auto mode enabled.
 
-To get the fixed static release ZIP file for AnuraOS, go to the releases page of this repository.
+To get the fixed static release ZIP file for AnuraOS, go to the releases page of this repository. I also added two versions of the static release. The semi-static version, and the full-static version. The semi-static version works like the normal static version of AnuraOS, where it expects that you have a wisp server running on ```wss://<domain root>```. The full-static version automatically uses ```wss://anura.pro```, the default wisp server for the AnuraOS demo site. I made the full-static version because then it is technically fully static if you are hosting AnuraOS on your own domain.
