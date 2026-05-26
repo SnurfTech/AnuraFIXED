@@ -27,21 +27,18 @@ jobs:
 
       - name: Rebuild AnuraOS
         run: |
-          mkdir -p dist
-          unzip -oq anura.zip -d dist
+          mkdir -p dist-semi-static
+          unzip -oq anura.zip -d dist-semi-static
           rm -f anura.zip
 
-          find dist -type f -name "*.cjs" -print0 | while IFS= read -r -d '' f; do mv "$f" "${f%.cjs}.js"; done
-          find dist -type f \( -name "*.js" -o -name "*.ts" -o -name "*.tsx" -o -name "*.html" \) -print0 | xargs -0 sed -i 's/\.cjs/\.js/g'
-          #find dist -type f -name "Settings.ts" -exec sed -i '/initial\["wisp-url"\] = "wss:\/\/relay\.widgetry\.org\/";/{n;/^[[:space:]]*}[[:space:]]*$/d;}' {} +
-          #find dist -type f -name "Settings.js" -exec sed -i '/initial\["wisp-url"\] = "wss:\/\/relay\.widgetry\.org\/";/{n;/^[[:space:]]*}[[:space:]]*$/d;}' {} +
-          find dist -type f -name "Settings.*s" -exec sed -i 's|!initial\["wisp-url"\]|true|g' {} +
-          find dist -type f -name "Settings.*s" -exec sed -i 's|initial\["wisp-url"\] = url;|initial["wisp-url"] = "wss://anura.pro";|g' {} +
-          find dist -type f \( -name "*.ts" -o -name "*.js" \) -exec sed -i '/{/! s|wisp_server|"wss://anura.pro"|g' {} +
+          find dist-semi-static -type f -name "*.cjs" -print0 | while IFS= read -r -d '' f; do mv "$f" "${f%.cjs}.js"; done
+          find dist-semi-static -type f \( -name "*.js" -o -name "*.ts" -o -name "*.tsx" -o -name "*.html" \) -print0 | xargs -0 sed -i 's/\.cjs/\.js/g'
+          #find dist-semi-static -type f -name "Settings.ts" -exec sed -i '/initial\["wisp-url"\] = "wss:\/\/relay\.widgetry\.org\/";/{n;/^[[:space:]]*}[[:space:]]*$/d;}' {} +
+          #find dist-semi-static -type f -name "Settings.js" -exec sed -i '/initial\["wisp-url"\] = "wss:\/\/relay\.widgetry\.org\/";/{n;/^[[:space:]]*}[[:space:]]*$/d;}' {} +
           # wss://relay.widgetry.org
-          sed -i 's|/lib/api/Filesystem.js|/lib/api/filesystem/Filesystem.js|g' dist/anura-sw.js
-          sed -i 's|/lib/api/LocalFS.js|/lib/api/filesystem/LocalFS.js|g' dist/anura-sw.js
-          find dist \( -path "*/Filesystem.ts" -o -path "*/Filesystem.js" \) -type f -exec sed -Ei '
+          sed -i 's|/lib/api/Filesystem.js|/lib/api/filesystem/Filesystem.js|g' dist-semi-static/anura-sw.js
+          sed -i 's|/lib/api/LocalFS.js|/lib/api/filesystem/LocalFS.js|g' dist-semi-static/anura-sw.js
+          find dist-semi-static \( -path "*/Filesystem.ts" -o -path "*/Filesystem.js" \) -type f -exec sed -Ei '
           s/rest\[rest\.length - 1\]!\(null\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1]!(null);\n}/g;
           s/rest\[rest\.length - 1\]!\(err\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1]!(err);\n}/g;
           s/rest\[rest\.length - 1\]!\(null, res\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1]!(null, res);\n}/g;
@@ -50,24 +47,31 @@ jobs:
           s/rest\[rest\.length - 1\]\(null, res\);/if (typeof rest[rest.length - 1] === "function") {\n    rest[rest.length - 1](null, res);\n}/g;
           ' {} +
 
-          mkdir -p dist/x86images/alpine-boot
+          mkdir -p dist-semi-static/x86images/alpine-boot
 
-          curl -Lo dist/x86images/alpine-boot/vmlinuz-virt \
+          curl -Lo dist-semi-static/x86images/alpine-boot/vmlinuz-virt \
             https://anura.pro/x86images/alpine-boot/vmlinuz-virt
 
-          curl -Lo dist/x86images/alpine-boot/initramfs-virt \
+          curl -Lo dist-semi-static/x86images/alpine-boot/initramfs-virt \
             https://anura.pro/x86images/alpine-boot/initramfs-virt
 
-          mkdir dist/x86images/alpine-rootfs
-          cd dist/x86images/alpine-rootfs
+          mkdir dist-semi-static/x86images/alpine-rootfs
+          cd dist-semi-static/x86images/alpine-rootfs
           for file in $(cat ../../config.json | grep -oP "x86images/alpine-rootfs/[a-z]+" | cut -d '/' -f3); do
             curl -LO "https://anura.pro/x86images/alpine-rootfs/$file"
           done
           cd -
 
-          cd dist
-          zip -r ../anura.zip .
-          cd -
+          cp -r dist-semi-static dist-full-static
+          find dist-full-static -type f -name "Settings.*s" -exec sed -i 's|!initial\["wisp-url"\]|true|g' {} +
+          find dist-full-static -type f -name "Settings.*s" -exec sed -i 's|initial\["wisp-url"\] = url;|initial["wisp-url"] = "wss://anura.pro";|g' {} +
+          find dist-full-static -type f \( -name "*.ts" -o -name "*.js" \) -exec sed -i '/{/! s|wisp_server|"wss://anura.pro"|g' {} +
+
+          cd dist-semi-static
+          zip -r ../anura-semi-static.zip .
+          cd ../dist-full-static
+          zip -r ../anura-full-static.zip .
+          cd ..
 
       - name: Delete latest release + tag if they exist
         env:
@@ -94,6 +98,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create latest \
-            anura.zip \
+            anura-semi-static.zip \
+            anura-full-static.zip \
             --title "Latest Build" \
             --notes "Automated latest release"
